@@ -34,6 +34,36 @@ Unknown routes and thrown HTTP exceptions use one JSON body: `statusCode`, `mess
 | `npm run typecheck` | Typecheck `src` and `test` |
 | `npm run build` | Compile to `dist` |
 
+## Tests
+
+Run these from `losrecibosapi` after `npm install`.
+
+```bash
+npm test
+```
+
+Unit tests are the `*.spec.ts` files next to the code they cover. Vitest runs them once and exits.
+
+```bash
+npm run test:watch
+```
+
+Reruns unit tests when a file changes.
+
+```bash
+npm run test:cov
+```
+
+Runs the unit tests and writes a coverage report.
+
+```bash
+npm run test:e2e
+```
+
+End-to-end tests live in `test/` and use the `*.e2e-spec.ts` suffix. They boot the app through `configureApp`, so requests go through the same prefix, validation, and error handling as a running server.
+
+The test runner sets `NODE_ENV=test`, which skips the PostgreSQL connection check. `vitest.config.ts` and `vitest.config.e2e.ts` supply `PGUSER`, `PGPASSWORD`, and `PGDATABASE`. A running database is not required.
+
 ## Environment
 
 | Variable | Default | Purpose |
