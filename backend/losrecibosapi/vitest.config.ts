@@ -8,5 +8,11 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    env: {
+      NODE_ENV: 'test',
+      PGUSER: 'postgres',
+      PGPASSWORD: 'postgres',
+      PGDATABASE: 'losrecibos',
+    },
   },
 });

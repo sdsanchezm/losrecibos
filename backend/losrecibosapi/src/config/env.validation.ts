@@ -13,7 +13,15 @@ import { parseCorsOrigins } from './cors-origins.js';
 
 const NODE_ENVS = ['development', 'test', 'production'] as const;
 
+export const PG_SSL_MODES = [
+  'disable',
+  'require',
+  'verify-ca',
+  'verify-full',
+] as const;
+
 export type NodeEnv = (typeof NODE_ENVS)[number];
+export type PgSslMode = (typeof PG_SSL_MODES)[number];
 
 export class EnvironmentVariables {
   @IsIn(NODE_ENVS)
@@ -30,16 +38,47 @@ export class EnvironmentVariables {
 
   @IsString()
   CORS_ORIGINS!: string;
+
+  @IsString()
+  DATABASE_URL!: string;
+
+  @IsString()
+  PGHOST!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  PGPORT!: number;
+
+  @IsString()
+  PGUSER!: string;
+
+  @IsString()
+  PGPASSWORD!: string;
+
+  @IsString()
+  PGDATABASE!: string;
+
+  @IsIn(PG_SSL_MODES)
+  PGSSLMODE!: PgSslMode;
 }
 
 export function validateEnv(
   config: Record<string, unknown>,
 ): EnvironmentVariables {
+  const password = passwordFrom(config.PGPASSWORD);
   const normalized = {
     NODE_ENV: trimmedString(config.NODE_ENV) ?? 'development',
-    PORT: parsePort(config.PORT),
+    PORT: parsePort(config.PORT, 3000),
     API_PREFIX: trimmedString(config.API_PREFIX) ?? 'api',
     CORS_ORIGINS: trimmedString(config.CORS_ORIGINS) ?? '',
+    DATABASE_URL: parseDatabaseUrl(config.DATABASE_URL),
+    PGHOST: trimmedString(config.PGHOST) ?? 'localhost',
+    PGPORT: parsePort(config.PGPORT, 5432),
+    PGUSER: trimmedString(config.PGUSER) ?? '',
+    PGPASSWORD: password.value,
+    PGDATABASE: trimmedString(config.PGDATABASE) ?? '',
+    PGSSLMODE: trimmedString(config.PGSSLMODE)?.toLowerCase() ?? 'disable',
   };
 
   parseCorsOrigins(normalized.CORS_ORIGINS);
@@ -53,7 +92,53 @@ export function validateEnv(
     );
   }
 
+  if (!validated.DATABASE_URL) {
+    const missing: string[] = [];
+    if (!validated.PGUSER) {
+      missing.push('PGUSER');
+    }
+    if (!password.provided) {
+      missing.push('PGPASSWORD');
+    }
+    if (!validated.PGDATABASE) {
+      missing.push('PGDATABASE');
+    }
+    if (missing.length > 0) {
+      throw new Error(
+        `Missing ${missing.join(', ')}. Set them in .env, or set DATABASE_URL.`,
+      );
+    }
+  }
+
   return validated;
+}
+
+function passwordFrom(value: unknown): { provided: boolean; value: string } {
+  if (typeof value !== 'string') {
+    return { provided: false, value: '' };
+  }
+
+  return { provided: true, value: value.trim() };
+}
+
+function parseDatabaseUrl(value: unknown): string {
+  const raw = trimmedString(value);
+  if (raw === undefined) {
+    return '';
+  }
+
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error('DATABASE_URL must be a valid URL');
+  }
+
+  if (url.protocol !== 'postgresql:' && url.protocol !== 'postgres:') {
+    throw new Error('DATABASE_URL must use the postgresql:// scheme');
+  }
+
+  return raw;
 }
 
 function trimmedString(value: unknown): string | undefined {
@@ -65,9 +150,9 @@ function trimmedString(value: unknown): string | undefined {
   return trimmed === '' ? undefined : trimmed;
 }
 
-function parsePort(value: unknown): number {
+function parsePort(value: unknown, fallback: number): number {
   if (value === undefined || value === null || value === '') {
-    return 3000;
+    return fallback;
   }
 
   return typeof value === 'number' ? value : Number(value);

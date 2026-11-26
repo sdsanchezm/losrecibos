@@ -6,16 +6,19 @@ HTTP API for Los Recibos. NestJS 12, TypeScript, Vitest.
 
 ```bash
 npm install
-npm run start:dev
 ```
 
-The app boots without a `.env` file. Copy `.env.example` to `.env` when you need to override a setting:
+Copy `.env.example` to `.env` and set the PostgreSQL credentials. The API loads that file on startup.
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-`GET /api/v1/health` returns `{ "status": "ok", "timestamp": "<iso>" }`.
+```bash
+npm run start:dev
+```
+
+Development and production open a PostgreSQL pool and run `SELECT 1` before listening. `NODE_ENV=test` skips that check. `GET /api/v1/health` returns `{ "status": "ok", "timestamp": "<iso>" }`.
 
 Unknown routes and thrown HTTP exceptions use one JSON body: `statusCode`, `message`, `path`, `timestamp`. Unexpected failures return `Internal server error` and the detail stays in the server log.
 
@@ -39,6 +42,13 @@ Unknown routes and thrown HTTP exceptions use one JSON body: `statusCode`, `mess
 | `PORT` | `3000` | HTTP port |
 | `API_PREFIX` | `api` | Global path prefix. Version `v1` is appended after it. |
 | `CORS_ORIGINS` | empty | Comma-separated origins. Empty disables CORS. `*` allows any origin without credentials. |
+| `PGHOST` | `localhost` | PostgreSQL host. Ignored when `DATABASE_URL` is set. |
+| `PGPORT` | `5432` | PostgreSQL port. Ignored when `DATABASE_URL` is set. |
+| `PGUSER` | | Database user. Required unless `DATABASE_URL` is set. |
+| `PGPASSWORD` | | Database password. Required unless `DATABASE_URL` is set. An empty value is allowed. |
+| `PGDATABASE` | | Database name. Required unless `DATABASE_URL` is set. |
+| `DATABASE_URL` | empty | `postgresql://` URL. When set, it replaces the `PG*` connection settings. |
+| `PGSSLMODE` | `disable` | `disable`, `require`, `verify-ca`, or `verify-full`. |
 
 ## Layout
 
@@ -48,8 +58,9 @@ src/
   app.module.ts           composition root
   app.setup.ts            prefix, versioning, CORS, validation, errors
   config/                 environment validation
+  database/               PostgreSQL connection pool
   common/filters/         HTTP error body
   health/                 liveness route
 ```
 
-Add a feature as `src/<feature>/` with its own module, controller, and service, then import that module from `AppModule`. Read configuration through `ConfigService`, not `process.env`.
+Add a feature as `src/<feature>/` with its own module, controller, and service, then import that module from `AppModule`. Read configuration through `ConfigService`, not `process.env`. Inject `DatabaseService` to query PostgreSQL.

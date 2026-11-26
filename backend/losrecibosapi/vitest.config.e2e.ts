@@ -6,5 +6,11 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    env: {
+      NODE_ENV: 'test',
+      PGUSER: 'postgres',
+      PGPASSWORD: 'postgres',
+      PGDATABASE: 'losrecibos',
+    },
   },
 });
