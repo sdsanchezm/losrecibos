@@ -62,6 +62,20 @@ npm run test:e2e
 
 End-to-end tests live in `test/` and use the `*.e2e-spec.ts` suffix. They boot the app through `configureApp`, so requests go through the same prefix, validation, and error handling as a running server.
 
+To run one module, pass its directory after `--`:
+
+```bash
+npm test -- src/health
+```
+
+A file path limits the run to that file. The same argument works with `test:watch`, `test:cov`, and `test:e2e`:
+
+```bash
+npm test -- src/health/health.controller.spec.ts
+npm run test:watch -- src/database
+npm run test:e2e -- test/health.e2e-spec.ts
+```
+
 The test runner sets `NODE_ENV=test`, which skips the PostgreSQL connection check. `vitest.config.ts` and `vitest.config.e2e.ts` supply `PGUSER`, `PGPASSWORD`, and `PGDATABASE`. A running database is not required.
 
 ## Environment
